@@ -1,0 +1,56 @@
+#!/bin/env bash
+
+##########
+# CONFIG #
+##########
+
+mainconfdir=".ctssh"
+
+#################
+# ACTUAL SCRIPT #
+#################
+
+# Check if dialog is installed
+if ! which dialog > /dev/null 2>&1 ; then
+    echo "You don't have dialog installed, this script is dependant on it." 1>&2
+    exit 1
+fi
+
+# Check if the configuration directory is available, if not: create it
+if [ ! -d ${HOME}/${mainconfdir} ] ; then
+	if [ -f ${HOME}/${mainconfdir} ] ; then
+		echo "The configdir ${mainconfdir} is a file but should be a directory, please correct this." 1>&2
+		exit 2
+	else
+		mkdir ${HOME}/${mainconfdir}
+	fi
+fi
+
+if [ -z "${1}" ] ; then
+	confdir=""
+else
+	confdir="/${1}"
+fi
+
+itemcounter=1
+for item in ${HOME}/${mainconfdir}${confdir}/* ; do
+	title=$(echo $item | sed "s#^${HOME}/${mainconfdir}${confdir}/##")
+	menuoptions+=(${itemcounter} "${title}")
+	itemcounter=$((${itemcounter} + 1))
+done
+
+choice=$(dialog --trim --title 'CT SSH' --menu 'Choose SSH session' 15 40 10 "${menuoptions[@]}" 2>&1 >/dev/tty)
+echo $choice
+
+itemcounter=1
+for item in ${HOME}/${mainconfdir}${confdir}/* ; do
+	if [ $itemcounter -eq $choice ] ; then
+		title=$(echo $item | sed "s#^${HOME}/${mainconfdir}${confdir}/##")
+		if [ -f "${item}" ] ; then
+			ssh "${title}"
+		elif [ -d "${item}" ] ; then
+			$0 "${title}"
+		fi
+	fi
+	itemcounter=$((${itemcounter} + 1))
+done
